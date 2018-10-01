@@ -1,55 +1,322 @@
-breed[flies fly]
-breed[sterilflies sfly]
-breed[eggs egg]
+breed [moscas mosca]
+breed [ovos ovo]
 
-flies-own[energy fertility]
-sterilflies-own[energy]
+moscas-own [energia fertilidade esteril]
+ovos-own [tempo-restante quantos-gera mutacao] ; EXTRA MUTACAO
 
-to setup
+to Setup
   clear-all
   setup-patches
-  setup-turtles
+  setup-moscas
   reset-ticks
 end
 
-to setup-turtles
-  create-flies nflies
-  [
-    set energy inicEnergy
-    set fertility nFertil
-    set shape "mosca"
-    set color black
-    setxy random-xcor random-ycor
+to Go
+    ask turtles [
+    agir
+    informar
   ]
-
-  create-sterilflies nsterilflies
-  [
-    set energy inicEnergy
-    set shape "mosca"
-    set color red
-    setxy random-xcor random-ycor
-  ]
-
+  tick
+  if fim [stop]
 end
 
 to setup-patches
-  set-patch-size 20
-  ask patches [set pcolor green]
-  ask patches with [pcolor = green] [ if random 101 < percFood [ set pcolor brown]]
+  ask patches [
+    ifelse random 100 < p-celulas-alimento [
+      set pcolor brown
+    ][
+      set pcolor green
+    ]
+
+  ]
 end
 
-to go
+to setup-moscas
+  ; criar moscas
+  let total-moscas (quantidade-moscas + quantidade-moscas-estereis)
 
+  create-moscas total-moscas [
+    setxy  random(max-pxcor + 1) random(max-pycor + 1)
+    set heading random(360)
+    set fertilidade random(101)
+    set esteril false
+    set energia energia-inicial
+    set shape "mosca"
+    set size 1.5
+    set color blue
+  ]
+
+  ; definir numero de moscas estereis
+  ask n-of quantidade-moscas-estereis turtles [
+    set color red
+    set fertilidade 0
+    set esteril true
+  ]
+end
+
+to informar
+  if mostrar-energia and breed = moscas [set label energia]
+  if mostrar-quantos-gera and breed = ovos [set label quantos-gera]
+end
+
+to-report fim
+  ifelse not any? turtles [
+    ;user-message "Fim de simulacao"
+    report true
+  ][
+    report false
+  ]
+end
+
+to agir
+  ; se for um ovo reduzir o tempo restante ate a sua eclosao
+  ifelse breed = ovos [
+    set tempo-restante (tempo-restante - 1)
+    if tempo-restante = 0 [eclodir]
+  ][
+    ; caso contrario, assumir que e uma mosca normal e definir a sua percecao normal
+    let moscas-percecao moscas-on neighbors4
+    let moscas? any? moscas-percecao
+    let comida? any? neighbors4 with [pcolor = brown]
+
+    ; adaptar a percecao no caso das moscas estereis
+    if esteril [
+      set moscas-percecao turtles-on neighbors
+      set moscas? any? moscas-percecao
+      set comida? false ; dado que estas nao comem
+    ]
+    ; verificar se existem moscas na percecao
+    ifelse moscas? [
+      ; existem moscas na percepcao
+      if esteril [
+        ; verificar se existem mais do que duas estereis no mesmo sitio para fazer a transformacao
+        transformar-se-possivel
+      ]
+      ask moscas-percecao [
+        interagir ; myself - quem perceciona
+      ]
+      if not esteril [
+        ; mover para uma das celulas percecionadas
+        move-to one-of neighbors4
+      ]
+    ][
+      ; nao existem moscas na percecao
+      ifelse comida?[
+        ; existe comida na percecao
+        comer
+      ][
+        ;nao existe comida na percecao (ou e uma mosca esteril)
+        accao-defeito
+      ]
+    ]
+    ; quick fix here
+    set energia (energia - 1)
+    if energia < 1 [die]
+  ]
+end
+
+to interagir
+  ; myself - quem perceciona, self - quem e percecionado
+  ifelse breed = ovos [
+    ; so acontece quando o myself e esteril (por causa do turtles-on vs moscas-on)
+    ifelse mutacoes and tipo-mutacao = "acumulativa" [
+      set mutacao (mutacao + 1)
+      if mutacao > 100 [set mutacao 100]
+    ][
+      set quantos-gera (quantos-gera - 1)
+      if quantos-gera < 1 [die]
+    ]
+  ][
+    if myself = nobody [stop] ; no caso de ter morrido devido a uma interacao anterior
+    ifelse not [esteril] of myself and not esteril [
+      ; Mosca + Mosca
+      let num-a-gerar floor (([fertilidade] of myself + fertilidade) / 20)
+      ; para impedir criar ovos vazios
+      if num-a-gerar > 0 [
+        gerar-ovo num-a-gerar
+
+        if ovos-custam-energia [ ; EXTRA OVOS
+          set energia floor (energia / 2) ; pode ficar com zero de energia
+          if energia < 1 [die]
+          ask myself [
+            set energia floor (energia / 2)  ; pode ficar com zero de energia
+            if energia < 1 [die]
+          ]
+        ]
+      ]
+    ][
+      ifelse [esteril] of myself and esteril [
+        ; Esteril + Esteril
+        let energia-perceciona [energia] of myself
+        let energia-percecionado energia
+        ; verificar se algum dos niveis de energia e inferior a 10% da energia inicial
+        ifelse energia-perceciona < energia-percecionado [
+          ; quem perceciona pode ser eliminado?
+          if energia-perceciona < (0.1 * energia-inicial) [
+            ; eliminar o que perceciona
+            ; e necessario acrescentar energia ao percecionado
+            let energia-ganha [energia] of myself
+            set energia (energia + energia-ganha)
+            ask myself [die]
+          ]
+        ]
+        [
+          ifelse energia-perceciona > energia-percecionado [
+            ; quem e percecionado pode ser eliminado?
+            if energia-percecionado < (0.1 * energia-inicial) [
+              ; eliminar quem e percecionado
+              ; e necessario acrescentar energia ao que perceciona
+              let energia-ganha energia
+              ask myself [set energia (energia + energia-ganha)]
+              die
+            ]
+          ][
+            ; nenhum pode ser eliminado, e agora?
+            accao-defeito
+          ]
+        ]
+      ][
+        ifelse [esteril] of myself and not esteril [
+          ; Esteril + Mosca
+          set fertilidade (fertilidade - ( fertilidade * reducao-fertilidade / 100))
+        ][
+          ; Mosca + Esteril
+          ask myself [set fertilidade (fertilidade - ( fertilidade * reducao-fertilidade / 100))]
+        ]
+      ]
+    ]
+  ]
+
+end
+
+to comer
+  let comida one-of neighbors4 with [pcolor = brown]
+  face comida
+  move-to comida
+  set energia (energia + energia-obtida-alimento)
+  ask comida [set pcolor green]
+end
+
+to transformar-se-possivel
+  ; verificar se existem mais do que duas estereis no mesmo sitio para fazer a transformacao
+  if count (moscas-on patch-here) with [esteril] > 2 [
+    ; watch-me
+    ; criar a variavel para estar disponivel no proximo scope
+    let energia-ganha 1
+    ; existe, necessito de verificar se ha alguma mosca normal para obter a mesma energia desta
+    let alguma-mosca? any? (moscas-on neighbors) with [not esteril]
+    if alguma-mosca? [
+      ; obter o valor mais alto de energia entre estas
+      set energia-ganha (max [energia] of ((moscas-on neighbors) with [not esteril]))
+    ]
+    set esteril false
+    set energia energia-ganha
+    set fertilidade random(101) ; talvez nao?
+    set color blue
+  ]
+end
+
+to gerar-ovo [num-a-gerar]
+  hatch-ovos 1 [
+    setxy xcor ycor
+    set shape "egg"
+    set color yellow
+    set quantos-gera num-a-gerar
+    set tempo-restante tempo-para-eclosao
+    if mutacoes and (tipo-mutacao = "acumulativa") [
+      set mutacao 0 ; EXTRA MUTACAO
+    ]
+  ]
+end
+
+to eclodir
+  hatch-moscas quantos-gera [
+    setxy xcor ycor
+    set heading random(360)
+    set energia energia-inicial
+    set shape "mosca"
+    set size 1.5
+    set fertilidade random(101)
+    set esteril false
+    set color blue
+
+    if [mutacoes] of myself [
+      ifelse tipo-mutacao = "espontanea"[
+        ; tipo espontanea
+        if random (100) + 1 <= p-mutacao [
+          mutar
+        ]
+      ][
+        ; tipo acumulativo
+        if random(101) <= [mutacao] of myself [
+          mutar
+        ]
+      ]
+    ]
+  ]
+  die
+end
+
+to mutar
+  ifelse random(101) <= p-mutacao-fatal [
+    die
+  ][
+    set fertilidade 0
+    set esteril true
+    set color red
+  ]
+end
+
+to accao-defeito
+  ifelse esteril [
+    ; verificar se a percecao da mosca esteril esta vazia
+    let percecao-vazia? not any? turtles-on neighbors
+    ; se estiver, mover a mosca para a esquerda ou direita
+    ifelse percecao-vazia? [
+      ifelse random(2) = 0 [right 90][left 90]
+      forward 1
+    ][
+      ; a percecao da mosca esteril nao esta vazia
+      let destino no-patches ; inicializar para poder usar nos scopes dos 'ifelses'
+      ; qual o numero maximo de moscas na percecao
+      let max-moscas max-one-of neighbors [count turtles-here with [breed = moscas and esteril]]
+      ; qual o numero maximo de ovos na percecao
+      let max-ovos max-one-of neighbors [count turtles-here with [breed = ovos]]
+      ; definir o destino como sendo o patch com mais moscas ou ovos
+      ifelse max-moscas > max-ovos[
+        set destino max-moscas
+      ][
+        set destino max-ovos
+      ]
+      face destino
+      move-to destino
+    ]
+  ][
+    ; Acao defeito p/ mosca normal
+    ; verificar se a percecao esta vazia
+    let percecao-vazia? not any? turtles-on neighbors4
+    ifelse percecao-vazia? [
+      ; esta vazia, logo vou mover a mosca para um patch vazio
+      let destino one-of neighbors4 with [not any? turtles-here]
+      face destino
+      move-to destino
+    ][
+      ; existem outras moscas na percecao da mosca
+      ; mover a mosca para a esquerda ou direita
+      ifelse random(2)  = 0 [right 90][left 90]
+      forward 1
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-294
-10
-962
-679
+31
+27
+657
+654
 -1
 -1
-20.0
+12.12
 1
 10
 1
@@ -59,40 +326,23 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+0
+50
+0
+50
 0
 0
 1
 ticks
 30.0
 
-BUTTON
-11
-10
-85
-43
-Setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 SLIDER
-12
-44
-184
-77
-percFood
-percFood
+839
+26
+994
+59
+p-celulas-alimento
+p-celulas-alimento
 5
 20
 5.0
@@ -102,109 +352,60 @@ percFood
 HORIZONTAL
 
 SLIDER
-12
-81
-184
-114
-eatEnergy
-eatEnergy
+839
+92
+994
+125
+energia-obtida-alimento
+energia-obtida-alimento
 1
 50
-5.0
+20.0
 1
 1
-E
-HORIZONTAL
-
-SLIDER
-12
-116
-184
-149
-nflies
-nflies
-1
-100
-10.0
-1
-1
-Flies
-HORIZONTAL
-
-SLIDER
-12
-152
-221
-185
-nsterilflies
-nsterilflies
-1
-100
-37.0
-1
-1
-Steril Flies
+U
 HORIZONTAL
 
 INPUTBOX
-12
-188
-173
-248
-inicEnergy
-100.0
-1
-0
-Number
-
-SLIDER
-13
-252
-185
-285
-nFertil
-nFertil
-0
-100
-10.0
-1
-1
-fertility
-HORIZONTAL
-
-INPUTBOX
-13
-287
-174
-347
-nTicksHatch
+669
+26
+811
+86
+quantidade-moscas
 4.0
 1
 0
 Number
 
-SLIDER
-12
-350
-233
-383
-fertilityReduction
-fertilityReduction
+INPUTBOX
+669
+85
+811
+145
+quantidade-moscas-estereis
+20.0
+1
 0
-10
-2.0
+Number
+
+INPUTBOX
+669
+145
+811
+205
+tempo-para-eclosao
+100.0
 1
-1
-fertility
-HORIZONTAL
+0
+Number
 
 BUTTON
-89
-10
-152
-43
+767
+302
+822
+368
+Iniciar
 Go
-go
 T
 1
 T
@@ -213,6 +414,295 @@ NIL
 NIL
 NIL
 NIL
+1
+
+BUTTON
+676
+302
+768
+335
+Setup
+Setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+839
+59
+994
+92
+reducao-fertilidade
+reducao-fertilidade
+0
+10
+10.0
+1
+1
+%
+HORIZONTAL
+
+INPUTBOX
+669
+205
+811
+265
+energia-inicial
+5000.0
+1
+0
+Number
+
+SWITCH
+841
+154
+995
+187
+mostrar-energia
+mostrar-energia
+1
+1
+-1000
+
+SWITCH
+841
+187
+995
+220
+mostrar-quantos-gera
+mostrar-quantos-gera
+1
+1
+-1000
+
+TEXTBOX
+904
+133
+940
+151
+Labels
+11
+0.0
+1
+
+TEXTBOX
+694
+10
+793
+28
+Definições Principais\n
+11
+0.0
+1
+
+TEXTBOX
+871
+10
+968
+28
+Outras Definições
+11
+0.0
+1
+
+MONITOR
+1071
+468
+1163
+513
+Total de Moscas
+count moscas
+17
+1
+11
+
+MONITOR
+1071
+513
+1128
+558
+Moscas
+count moscas with [not esteril]
+17
+1
+11
+
+MONITOR
+1128
+513
+1220
+558
+Moscas Estereis
+count moscas with [esteril]
+17
+1
+11
+
+MONITOR
+1163
+468
+1220
+513
+Ovos
+count ovos
+17
+1
+11
+
+PLOT
+668
+417
+1028
+656
+População
+ticks
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"moscas" 1.0 0 -13345367 true "" "plot count moscas with [not esteril]"
+"moscas-estereis" 1.0 0 -2674135 true "" "plot count moscas with [esteril]"
+"ovos" 1.0 0 -1184463 true "" "plot count ovos"
+"comida" 1.0 0 -6459832 true "" "plot count patches with [pcolor = brown]"
+
+TEXTBOX
+1138
+10
+1175
+28
+Extras
+11
+0.0
+1
+
+SLIDER
+1208
+135
+1338
+168
+p-mutacao
+p-mutacao
+1
+100
+98.0
+1
+1
+%
+HORIZONTAL
+
+CHOOSER
+1208
+90
+1338
+135
+tipo-mutacao
+tipo-mutacao
+"espontanea" "acumulativa"
+0
+
+SWITCH
+1208
+57
+1338
+90
+mutacoes
+mutacoes
+1
+1
+-1000
+
+SLIDER
+1208
+168
+1338
+201
+p-mutacao-fatal
+p-mutacao-fatal
+0
+100
+100.0
+1
+1
+%
+HORIZONTAL
+
+BUTTON
+676
+335
+767
+368
+Step
+Go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+1044
+50
+1194
+232
+A mutação espontânea acontece sempre que um ovo eclode.\n\nA mutacao acumulativa substitui o procedimento de redução do número de moscas que um ovo gera por um procedimento onde um ovo aumenta a probabilidade de sofrer uma mutação sempre que uma mosca esteril interage com este.
+11
+0.0
+1
+
+TEXTBOX
+1045
+34
+1106
+52
+MUTAÇÃO
+12
+53.0
+1
+
+TEXTBOX
+1046
+266
+1196
+308
+Diminui a energia de ambos os intervenientes em metade sempre que um ovo é gerado.
+11
+0.0
+1
+
+SWITCH
+1206
+269
+1354
+302
+ovos-custam-energia
+ovos-custam-energia
+1
+1
+-1000
+
+TEXTBOX
+1047
+249
+1197
+267
+CUSTO P/ OVO
+12
+53.0
 1
 
 @#$#@#$#@
@@ -335,6 +825,13 @@ dot
 false
 0
 Circle -7500403 true true 90 90 120
+
+egg
+false
+0
+Circle -7500403 true true 96 76 108
+Circle -7500403 true true 72 104 156
+Polygon -7500403 true true 221 149 195 101 106 99 80 148
 
 face happy
 false
