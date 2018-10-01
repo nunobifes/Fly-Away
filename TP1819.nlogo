@@ -4,6 +4,7 @@ breed[eggs egg]
 
 flies-own[energy fertility]
 sterilflies-own[energy]
+eggs-own[agentCount]
 
 to setup
   clear-all
@@ -17,16 +18,18 @@ to setup-turtles
   [
     set energy inicEnergy
     set fertility nFertil
-    set shape "mosca"
+    set shape "fly"
     set color black
+    set size 1.5
     setxy random-xcor random-ycor
   ]
 
   create-sterilflies nsterilflies
   [
     set energy inicEnergy
-    set shape "mosca"
+    set shape "fly"
     set color red
+    set size 1.25
     setxy random-xcor random-ycor
   ]
 
@@ -39,7 +42,94 @@ to setup-patches
 end
 
 to go
+  ask turtles [
+    move
+    death
+  ]
+  tick
+end
 
+to move
+  ifelse breed = eggs [
+    if ticks >= ntickshatch[
+    ;eclodir
+    ]
+  ]
+  [
+    ifelse breed = flies[
+      ;case non-steril fly
+      let fly-perception flies-on neighbors4
+      let sfly-perception sterilflies-on neighbors4
+      let flies? any? fly-perception
+      let sflies? any? sfly-perception
+      let food? any? neighbors4 with [pcolor = brown]
+
+      ifelse false;flies?
+      [
+
+      ]
+      [
+        ifelse false;sflies?
+        [
+
+        ]
+        [
+          ifelse food?
+          [
+            let destiny one-of neighbors4 with [ pcolor = brown ]
+            face destiny
+            move-to destiny
+            set pcolor green
+            set energy energy + eatenergy
+          ]
+          [
+            let empty-perception? not any? turtles-on neighbors4
+            ifelse empty-perception?[
+              let destiny one-of neighbors4 with [not any? turtles-here]
+              face destiny
+              move-to destiny
+            ]
+            [
+              ifelse random(2)  = 0 [right 90][left 90]
+              forward 1
+            ]
+          ]
+        ]
+      ]
+    ]
+    [
+      ;case steril flies
+      let fly-perception turtles-on neighbors
+      let flies? any? fly-perception
+
+      ifelse false;flies?
+      [
+
+      ]
+      [
+        let full-perception? any? turtles-on neighbors
+        ifelse full-perception?[
+          let destiny one-of neighbors with [any? turtles-here]
+          face destiny
+          move-to destiny
+        ]
+        [
+          ifelse random(2)  = 0 [right 90][left 90]
+          forward 1
+        ]
+      ]
+    ]
+    set energy energy - 1
+  ]
+end
+
+to death
+  ask flies[
+    if energy <= 0 [die]
+  ]
+   ask sterilflies[
+    if energy <= 0 [die]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -95,7 +185,7 @@ percFood
 percFood
 5
 20
-5.0
+20.0
 1
 1
 %
@@ -106,8 +196,8 @@ SLIDER
 81
 184
 114
-eatEnergy
-eatEnergy
+eatenergy
+eatenergy
 1
 50
 5.0
@@ -140,7 +230,7 @@ nsterilflies
 nsterilflies
 1
 100
-37.0
+5.0
 1
 1
 Steril Flies
@@ -177,7 +267,7 @@ INPUTBOX
 287
 174
 347
-nTicksHatch
+ntickshatch
 4.0
 1
 0
@@ -394,6 +484,16 @@ Circle -16777216 true false 113 68 74
 Polygon -10899396 true false 189 233 219 188 249 173 279 188 234 218
 Polygon -10899396 true false 180 255 150 210 105 210 75 240 135 240
 
+fly
+true
+0
+Circle -7500403 true true 96 182 108
+Circle -7500403 true true 110 127 80
+Circle -7500403 true true 110 75 80
+Line -7500403 true 150 100 80 30
+Line -7500403 true 150 100 220 30
+Polygon -1 true false 150 165 210 120 255 105 270 150 240 210 180 195 150 165 90 120 45 105 30 150 60 210 120 195
+
 house
 false
 0
@@ -417,16 +517,6 @@ line half
 true
 0
 Line -7500403 true 150 0 150 150
-
-mosca
-true
-0
-Circle -7500403 true true 96 182 108
-Circle -7500403 true true 110 127 80
-Circle -7500403 true true 110 75 80
-Line -7500403 true 150 100 80 30
-Line -7500403 true 150 100 220 30
-Polygon -1 true false 150 165 210 120 255 105 270 150 240 210 180 195 150 165 90 120 45 105 30 150 60 210 120 195
 
 pentagon
 false
