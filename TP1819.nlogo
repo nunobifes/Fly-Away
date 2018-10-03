@@ -4,7 +4,7 @@ breed[eggs egg]
 
 flies-own[energy fertility]
 sterilflies-own[energy]
-eggs-own[agentCount]
+eggs-own[agentCount energy]
 
 to setup
   clear-all
@@ -14,8 +14,12 @@ to setup
 end
 
 to setup-turtles
-  create-flies nflies
-  [
+  cflies nflies
+  csterilflies nsterilflies
+end
+
+to cflies [nf]                                 ; Criar nf novas moscas não estereis
+  create-flies nf[
     set energy inicEnergy
     set fertility nFertil
     set shape "fly"
@@ -23,19 +27,19 @@ to setup-turtles
     set size 1.5
     setxy random-xcor random-ycor
   ]
+end
 
-  create-sterilflies nsterilflies
-  [
+to csterilflies [nsf]                          ; criar nsf novas moscas estereis
+  create-sterilflies nsf[
     set energy inicEnergy
     set shape "fly"
     set color red
     set size 1.25
     setxy random-xcor random-ycor
   ]
-
 end
 
-to setup-patches
+to setup-patches                                ; configurar patches
   set-patch-size 20
   ask patches [set pcolor green]
   ask patches with [pcolor = green] [ if random 101 < percFood [ set pcolor brown]]
@@ -51,8 +55,11 @@ end
 
 to move
   ifelse breed = eggs [
-    if ticks >= ntickshatch[
+    ifelse energy >= ntickshatch[
     ;eclodir
+        hatchh agentCount
+    ][
+      set energy energy + 1
     ]
   ]
   [
@@ -107,7 +114,7 @@ to move
 
       ]
       [
-        let full-perception? any? turtles-on neighbors
+        let full-perception? any? turtles-on neighbors                                  ;max-on or max-of
         ifelse full-perception?[
           let destiny one-of neighbors with [any? turtles-here]
           face destiny
@@ -130,6 +137,10 @@ to death
    ask sterilflies[
     if energy <= 0 [die]
   ]
+end
+
+to hatchh [aC] ; agentcount
+    hatch-flies aC
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
