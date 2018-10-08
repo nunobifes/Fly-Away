@@ -16,6 +16,7 @@ end
 to setup-turtles
   cflies nflies
   csterilflies nsterilflies
+  display-labels
 end
 
 to cflies [nf]                                 ; Criar nf novas moscas não estereis
@@ -39,6 +40,15 @@ to csterilflies [nsf]                          ; criar nsf novas moscas estereis
   ]
 end
 
+to cegg
+  hatch-eggs 1[
+    set shape "circle"
+    set color 139
+    set energy ntickshatch
+    set agentCount nFertil
+  ]
+end
+
 to setup-patches                                ; configurar patches
   set-patch-size 20
   ask patches [set pcolor green]
@@ -47,13 +57,14 @@ end
 
 to go
   ask turtles [
-    move
+    dosomething
     death
   ]
+  display-labels
   tick
 end
 
-to move
+to dosomething
   ifelse breed = eggs [
     ifelse energy >= ntickshatch[
     ;eclodir
@@ -61,8 +72,7 @@ to move
     ][
       set energy energy + 1
     ]
-  ]
-  [
+  ][
     ifelse breed = flies[
       ;case non-steril fly
       let fly-perception flies-on neighbors4
@@ -70,9 +80,11 @@ to move
       let flies? any? fly-perception
       let sflies? any? sfly-perception
       let food? any? neighbors4 with [pcolor = brown]
-
-      ifelse false;flies?
+      ifelse [flies] of myself and any? flies-on fly-perception ;flies?
       [
+
+        cegg
+        move
 
       ]
       [
@@ -115,19 +127,25 @@ to move
       ]
       [
         let full-perception? any? turtles-on neighbors                                  ;max-on or max-of
-        ifelse full-perception?[
+        if full-perception?[
           let destiny one-of neighbors with [any? turtles-here]
           face destiny
           move-to destiny
         ]
-        [
-          ifelse random(2)  = 0 [right 90][left 90]
-          forward 1
-        ]
+        move
       ]
     ]
     set energy energy - 1
   ]
+end
+
+to move
+  ifelse random(2) = 0 [
+    right 90
+  ][
+    left 90
+  ]
+  forward 1
 end
 
 to death
@@ -141,6 +159,17 @@ end
 
 to hatchh [aC] ; agentcount
     hatch-flies aC
+end
+
+to display-labels
+    ask turtles
+    [
+        set label ""
+        if show-energy?
+        [
+            set label energy
+        ]
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -164,8 +193,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -315,6 +344,17 @@ NIL
 NIL
 NIL
 1
+
+SWITCH
+1042
+101
+1176
+134
+show-energy?
+show-energy?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
