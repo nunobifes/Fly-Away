@@ -44,6 +44,7 @@ to cegg
   hatch-eggs 1[
     set shape "circle"
     set color 139
+    set size 0.5
     set energy ntickshatch
     set agentCount nFertil
   ]
@@ -68,7 +69,8 @@ to dosomething
   ifelse breed = eggs [
     ifelse energy >= ntickshatch[
     ;eclodir
-        hatchh agentCount
+      hatchh agentCount
+      die
     ][
       set energy energy + 1
     ]
@@ -80,10 +82,18 @@ to dosomething
       let flies? any? fly-perception
       let sflies? any? sfly-perception
       let food? any? neighbors4 with [pcolor = brown]
-      ifelse [flies] of myself and any? flies-on fly-perception ;flies?
+      ifelse flies? ;flies?
       [
-
-        cegg
+        let fliy one-of flies-on neighbors4
+        let aux (fertility + [fertility] of fliy) / 20
+        ;cegg
+        hatch-eggs 1[
+          set shape "circle"
+          set color 139
+          set size 0.75
+          set energy 0
+          set agentCount aux
+        ]
         move
 
       ]
@@ -118,7 +128,7 @@ to dosomething
     ]
     [
       ;case steril flies
-      let fly-perception turtles-on neighbors
+      let fly-perception flies-on neighbors
       let flies? any? fly-perception
 
       ifelse false;flies?
@@ -126,14 +136,17 @@ to dosomething
 
       ]
       [
-        let full-perception? any? turtles-on neighbors                                  ;max-on or max-of
-        if full-perception?[
-          let destiny one-of neighbors with [any? turtles-here]
+        let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
+        ifelse full-perception?[
+          let destiny max-one-of neighbors [count flies-here + count eggs-here]
           face destiny
           move-to destiny
         ]
-        move
+        [
+          move
+        ]
       ]
+
     ]
     set energy energy - 1
   ]
@@ -158,7 +171,13 @@ to death
 end
 
 to hatchh [aC] ; agentcount
-    hatch-flies aC
+  hatch-flies aC[
+    set energy inicEnergy
+    set fertility nFertil
+    set shape "fly"
+    set color black
+    set size 1.5
+  ]
 end
 
 to display-labels
@@ -193,8 +212,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-1
-1
+0
+0
 1
 ticks
 30.0
@@ -296,7 +315,7 @@ nFertil
 nFertil
 0
 100
-10.0
+40.0
 1
 1
 fertility
@@ -308,7 +327,7 @@ INPUTBOX
 174
 347
 ntickshatch
-4.0
+5.0
 1
 0
 Number
@@ -355,6 +374,25 @@ show-energy?
 0
 1
 -1000
+
+PLOT
+1099
+191
+1639
+615
+plot 1
+NIL
+NIL
+0.0
+1000.0
+0.0
+1000.0
+true
+true
+"" ""
+PENS
+"flies" 1.0 0 -16777216 true "" "plot count flies"
+"eggs" 1.0 0 -3844592 true "" "plot count eggs"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -539,10 +577,7 @@ fly
 true
 0
 Circle -7500403 true true 96 182 108
-Circle -7500403 true true 110 127 80
-Circle -7500403 true true 110 75 80
-Line -7500403 true 150 100 80 30
-Line -7500403 true 150 100 220 30
+Circle -7500403 true true 110 127 90
 Polygon -1 true false 150 165 210 120 255 105 270 150 240 210 180 195 150 165 90 120 45 105 30 150 60 210 120 195
 
 house
