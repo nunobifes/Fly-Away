@@ -2,6 +2,7 @@ breed[flies fly]
 breed[sterilflies sfly]
 breed[eggs egg]
 
+
 flies-own[energy fertility]
 sterilflies-own[energy]
 eggs-own[agentCount energy]
@@ -62,6 +63,7 @@ to go
     death
   ]
   display-labels
+
   tick
 end
 
@@ -84,18 +86,33 @@ to dosomething
       let food? any? neighbors4 with [pcolor = brown]
       ifelse flies? ;flies?
       [
-        let fliy one-of flies-on neighbors4
-        let aux (fertility + [fertility] of fliy) / 20
-        ;cegg
-        hatch-eggs 1[
-          set shape "circle"
-          set color 139
-          set size 0.75
-          set energy 0
-          set agentCount aux
+        ifelse options = "nicer eggs" [
+          if count eggs < 10[
+            let fliy one-of flies-on neighbors4
+            let aux (fertility + [fertility] of fliy) / 20
+            ;cegg
+            hatch-eggs 1[
+              set shape "circle"
+              set color 139
+              set size 0.75
+              set energy 0
+              set agentCount aux
+            ]
+          ]
+        ]
+        [
+          let fliy one-of flies-on neighbors4
+          let aux (fertility + [fertility] of fliy) / 20
+          ;cegg
+          hatch-eggs 1[
+            set shape "circle"
+            set color 139
+            set size 0.75
+            set energy 0
+            set agentCount aux
+          ]
         ]
         move
-
       ]
       [
         ifelse false;sflies?
@@ -244,7 +261,7 @@ percFood
 percFood
 5
 20
-20.0
+19.0
 1
 1
 %
@@ -274,7 +291,7 @@ nflies
 nflies
 1
 100
-10.0
+4.0
 1
 1
 Flies
@@ -289,7 +306,7 @@ nsterilflies
 nsterilflies
 1
 100
-5.0
+1.0
 1
 1
 Steril Flies
@@ -327,7 +344,7 @@ INPUTBOX
 174
 347
 ntickshatch
-5.0
+15.0
 1
 0
 Number
@@ -393,6 +410,16 @@ true
 PENS
 "flies" 1.0 0 -16777216 true "" "plot count flies"
 "eggs" 1.0 0 -3844592 true "" "plot count eggs"
+
+CHOOSER
+12
+390
+150
+435
+options
+options
+"normal" "nicer eggs"
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
