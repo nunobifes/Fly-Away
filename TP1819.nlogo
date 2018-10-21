@@ -64,7 +64,7 @@ to go
     death
   ]
   display-labels
-  ifelse count turtles = 0 or ticks > 1000[stop][tick]
+  ifelse count turtles = 0 or ticks > nTicksMax[stop][tick]
 end
 
 to dosomething
@@ -87,7 +87,7 @@ to dosomething
       ifelse flies? ;flies?
       [
         ifelse options = "nicer eggs" [
-          if tickCount >= 75[
+          if tickCount >= 50[
             let fliy one-of flies-on neighbors4
             let aux (fertility + [fertility] of fliy) / 20
             ;cegg
@@ -98,7 +98,7 @@ to dosomething
               set energy 0
               set agentCount aux
             ]
-            set tickCount tickCount - (tickCount * 0.75)
+            set tickCount tickCount - (tickCount * 0.50)
           ]
         ]
         [
@@ -130,6 +130,7 @@ to dosomething
             let destiny one-of neighbors4 with [not any? turtles-here]
             face destiny
             move-to destiny
+            set energy energy - 1
           ]
           [
             move
@@ -192,6 +193,7 @@ to dosomething
               [
                 set energy 1
               ]
+              move
             ]
             [
 
@@ -200,6 +202,7 @@ to dosomething
                 let menergy energy
                 ask sfliy[
                   set energy energy + menergy
+                  move
                 ]
                 set energy 0
               ]
@@ -210,6 +213,7 @@ to dosomething
                   ask sfliy[
                     set energy 0
                   ]
+                  move
                 ]
                 [
                   if energy < 10 and [energy] of sfliy < 10[
@@ -219,11 +223,13 @@ to dosomething
                       ask sfliy[
                         set energy 0
                       ]
+                      move
                     ]
                     [
                       let menergy energy
                       ask sfliy[
                         set energy energy + menergy
+                        move
                       ]
                       set energy 0
                     ]
@@ -231,7 +237,7 @@ to dosomething
                 ]
               ]
             ]
-
+            move
           ]
           [
             let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
@@ -259,6 +265,7 @@ to move
     left 90
   ]
   forward 1
+  set energy energy - 1
 end
 
 to death
@@ -345,7 +352,7 @@ percFood
 percFood
 5
 20
-18.0
+20.0
 1
 1
 %
@@ -360,7 +367,7 @@ eatenergy
 eatenergy
 1
 50
-5.0
+15.0
 1
 1
 E
@@ -375,7 +382,7 @@ nflies
 nflies
 1
 100
-10.0
+49.0
 1
 1
 Flies
@@ -390,7 +397,7 @@ nsterilflies
 nsterilflies
 1
 100
-21.0
+1.0
 1
 1
 Steril Flies
@@ -428,7 +435,7 @@ INPUTBOX
 174
 347
 ntickshatch
-15.0
+5.0
 1
 0
 Number
@@ -442,7 +449,7 @@ fertilityReduction
 fertilityReduction
 0
 10
-5.0
+1.0
 1
 1
 % fertility
@@ -505,6 +512,21 @@ options
 options
 "normal" "nicer eggs"
 1
+
+SLIDER
+12
+441
+184
+474
+nTicksMax
+nTicksMax
+1000
+5000
+1000.0
+100
+1
+Ticks
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
