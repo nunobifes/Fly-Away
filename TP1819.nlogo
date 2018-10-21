@@ -3,7 +3,7 @@ breed[sterilflies sfly]
 breed[eggs egg]
 
 
-flies-own[energy fertility]
+flies-own[energy fertility tickCount]
 sterilflies-own[energy]
 eggs-own[agentCount energy]
 
@@ -24,6 +24,7 @@ to cflies [nf]                                 ; Criar nf novas moscas não este
   create-flies nf[
     set energy inicEnergy
     set fertility nFertil
+    set tickCount 0
     set shape "fly"
     set color black
     set size 1.5
@@ -63,8 +64,7 @@ to go
     death
   ]
   display-labels
-
-  tick
+  ifelse count turtles = 0 or ticks > 1000[stop][tick]
 end
 
 to dosomething
@@ -87,7 +87,7 @@ to dosomething
       ifelse flies? ;flies?
       [
         ifelse options = "nicer eggs" [
-          if count eggs < 10[
+          if tickCount >= 75[
             let fliy one-of flies-on neighbors4
             let aux (fertility + [fertility] of fliy) / 20
             ;cegg
@@ -98,6 +98,7 @@ to dosomething
               set energy 0
               set agentCount aux
             ]
+            set tickCount tickCount - (tickCount * 0.75)
           ]
         ]
         [
@@ -115,58 +116,141 @@ to dosomething
         move
       ]
       [
-        ifelse false;sflies?
+        ifelse food?
         [
-
+          let destiny one-of neighbors4 with [ pcolor = brown ]
+          face destiny
+          move-to destiny
+          set pcolor green
+          set energy energy + eatenergy
         ]
         [
-          ifelse food?
-          [
-            let destiny one-of neighbors4 with [ pcolor = brown ]
+          let empty-perception? not any? turtles-on neighbors4
+          ifelse empty-perception?[
+            let destiny one-of neighbors4 with [not any? turtles-here]
             face destiny
             move-to destiny
-            set pcolor green
-            set energy energy + eatenergy
           ]
           [
-            let empty-perception? not any? turtles-on neighbors4
-            ifelse empty-perception?[
-              let destiny one-of neighbors4 with [not any? turtles-here]
-              face destiny
-              move-to destiny
-            ]
-            [
-              ifelse random(2)  = 0 [right 90][left 90]
-              forward 1
-            ]
+            move
           ]
         ]
       ]
+      set tickCount tickCount + 1
     ]
     [
       ;case steril flies
       let fly-perception flies-on neighbors
+      let egg-perception eggs-on neighbors
+      let sfly-perception sterilflies-on neighbors
       let flies? any? fly-perception
+      let eggs? any? egg-perception
+      let sflies? any? sfly-perception
 
-      ifelse false;flies?
-      [
-
+      ifelse eggs?[
+        let eggy one-of eggs-on neighbors
+        ask eggy[
+          set agentCount agentCount - 1
+          if agentCount = 0 [
+            die
+          ]
+        ]
       ]
       [
-        let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
-        ifelse full-perception?[
-          let destiny max-one-of neighbors [count flies-here + count eggs-here]
-          face destiny
-          move-to destiny
+        ifelse flies?;flies?
+        [
+         ;fertilityReduction
+          let fliy one-of flies-on neighbors
+          ask fliy[
+            ifelse fertility > 1[
+              set fertility fertility - (fertility * fertilityReduction)
+            ]
+            [
+              set breed sterilflies
+              set energy inicEnergy
+              set shape "fly"
+              set color red
+              set size 1.25
+
+            ]
+          ]
         ]
         [
-          move
+          if sflies?
+          [
+            ifelse count sterilflies-on neighbors >= 2[
+              set breed flies
+              set tickCount 0
+              set shape "fly"
+              set fertility nFertil
+              set color black
+              set size 1.5
+              ifelse any? flies-on neighbors[
+                let fenergy max-one-of flies-on neighbors [energy]
+                set energy fenergy
+              ]
+              [
+                set energy 1
+              ]
+            ]
+            [
+              ifelse any? sterilflies-on neighbors
+              [
+                let sfliy one-of sterilflies-on neighbors
+                ifelse energy < 10 and [energy] of sfliy > 10[
+                  let menergy energy
+                  ask sfliy[
+                    set energy energy + menergy
+                  ]
+                  set energy 0
+                ]
+                [
+                  ifelse energy > 10 and [energy] of sfliy < 10[
+                    let eenergy [energy]of sfliy
+                    set energy energy + eenergy
+                    ask sfliy[
+                      set energy 0
+                    ]
+                  ]
+                  [
+                    if energy < 10 and [energy] of sfliy < 10[
+                      let eenergy [energy] of sfliy
+                      ifelse energy > eenergy[
+                        set energy energy + eenergy
+                        ask sfliy[
+                          set energy 0
+                        ]
+                      ]
+                      [
+                        let menergy energy
+                        ask sfliy[
+                          set energy energy + menergy
+                        ]
+                        set energy 0
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+              [
+                let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
+                    ifelse full-perception?[
+                      let destiny max-one-of neighbors [count flies-here + count eggs-here]
+                      face destiny
+                      move-to destiny
+                    ]
+                    [
+                      move
+                    ]
+              ]
+            ]
+          ]
         ]
       ]
-
     ]
     set energy energy - 1
   ]
+
 end
 
 to move
@@ -191,6 +275,7 @@ to hatchh [aC] ; agentcount
   hatch-flies aC[
     set energy inicEnergy
     set fertility nFertil
+    set tickCount 0
     set shape "fly"
     set color black
     set size 1.5
@@ -261,7 +346,7 @@ percFood
 percFood
 5
 20
-19.0
+18.0
 1
 1
 %
@@ -291,7 +376,7 @@ nflies
 nflies
 1
 100
-4.0
+10.0
 1
 1
 Flies
@@ -306,7 +391,7 @@ nsterilflies
 nsterilflies
 1
 100
-1.0
+21.0
 1
 1
 Steril Flies
@@ -358,10 +443,10 @@ fertilityReduction
 fertilityReduction
 0
 10
-2.0
+5.0
 1
 1
-fertility
+% fertility
 HORIZONTAL
 
 BUTTON
@@ -410,6 +495,7 @@ true
 PENS
 "flies" 1.0 0 -16777216 true "" "plot count flies"
 "eggs" 1.0 0 -3844592 true "" "plot count eggs"
+"sterilflies" 1.0 0 -5298144 true "" "plot count sterilflies"
 
 CHOOSER
 12
@@ -774,6 +860,43 @@ NetLogo 6.0.4
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count</metric>
+    <enumeratedValueSet variable="nFertil">
+      <value value="40"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-energy?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="options">
+      <value value="&quot;nicer eggs&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="inicEnergy">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="nsterilflies">
+      <value value="21"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fertilityReduction">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ntickshatch">
+      <value value="15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="eatenergy">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="nflies">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percFood">
+      <value value="18"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
