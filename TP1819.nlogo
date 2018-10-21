@@ -176,7 +176,7 @@ to dosomething
           ]
         ]
         [
-          if sflies?
+          ifelse sflies?
           [
             ifelse count sterilflies-on neighbors >= 2[
               set breed flies
@@ -194,61 +194,60 @@ to dosomething
               ]
             ]
             [
-              ifelse any? sterilflies-on neighbors
+
+              let sfliy one-of sterilflies-on neighbors
+              ifelse energy < 10 and [energy] of sfliy > 10[
+                let menergy energy
+                ask sfliy[
+                  set energy energy + menergy
+                ]
+                set energy 0
+              ]
               [
-                let sfliy one-of sterilflies-on neighbors
-                ifelse energy < 10 and [energy] of sfliy > 10[
-                  let menergy energy
+                ifelse energy > 10 and [energy] of sfliy < 10[
+                  let eenergy [energy]of sfliy
+                  set energy energy + eenergy
                   ask sfliy[
-                    set energy energy + menergy
+                    set energy 0
                   ]
-                  set energy 0
                 ]
                 [
-                  ifelse energy > 10 and [energy] of sfliy < 10[
-                    let eenergy [energy]of sfliy
-                    set energy energy + eenergy
-                    ask sfliy[
-                      set energy 0
-                    ]
-                  ]
-                  [
-                    if energy < 10 and [energy] of sfliy < 10[
-                      let eenergy [energy] of sfliy
+                  if energy < 10 and [energy] of sfliy < 10[
+                    let eenergy [energy] of sfliy
                       ifelse energy > eenergy[
-                        set energy energy + eenergy
-                        ask sfliy[
-                          set energy 0
-                        ]
-                      ]
-                      [
-                        let menergy energy
-                        ask sfliy[
-                          set energy energy + menergy
-                        ]
+                      set energy energy + eenergy
+                      ask sfliy[
                         set energy 0
                       ]
                     ]
+                    [
+                      let menergy energy
+                      ask sfliy[
+                        set energy energy + menergy
+                      ]
+                      set energy 0
+                    ]
                   ]
                 ]
               ]
-              [
-                let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
-                    ifelse full-perception?[
-                      let destiny max-one-of neighbors [count flies-here + count eggs-here]
-                      face destiny
-                      move-to destiny
-                    ]
-                    [
-                      move
-                    ]
-              ]
+            ]
+
+          ]
+          [
+            let full-perception? any? flies-on neighbors or any? eggs-on neighbors                                  ;max-on or max-of
+            ifelse full-perception?[
+              let destiny max-one-of neighbors [count flies-here + count eggs-here]
+              face destiny
+              move-to destiny
+            ]
+            [
+              move
             ]
           ]
         ]
       ]
     ]
-    set energy energy - 1
+
   ]
 
 end
